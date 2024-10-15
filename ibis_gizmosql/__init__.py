@@ -26,7 +26,7 @@ import ibis.expr.schema as sch
 import ibis.expr.types as ir
 from ibis import util
 from ibis.backends import CanCreateDatabase, CanCreateSchema, UrlFromPath
-from ibis_sqlflite.converter import DuckDBPandasData
+from ibis_gizmosql.converter import DuckDBPandasData
 from ibis.backends.sql import SQLBackend
 from ibis.backends.sql.compilers import DuckDBCompiler
 from ibis.backends.sql.compilers.base import STAR, C

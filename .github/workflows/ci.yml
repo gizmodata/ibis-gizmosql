@@ -1,4 +1,4 @@
-name: ibis-sqlflite-ci
+name: ibis-gizmosql-ci
 
 on:
   workflow_dispatch:

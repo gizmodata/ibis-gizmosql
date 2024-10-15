@@ -1,16 +1,16 @@
-# ibis-sqlflite
-An [Ibis](https://ibis-project.org) back-end for [SQLFlite](https://github.com/voltrondata/sqlflite)
+# ibis-gizmosql
+An [Ibis](https://ibis-project.org) back-end for [GizmoSQL](https://github.com/gizmodata/gizmosql)
 
-[<img src="https://img.shields.io/badge/GitHub-prmoore77%2Fibis--sqlflite-blue.svg?logo=Github">](https://github.com/prmoore77/ibis-sqlflite)
-[![ibis-sqlflite-ci](https://github.com/prmoore77/ibis-sqlflite/actions/workflows/ci.yml/badge.svg)](https://github.com/prmoore77/ibis-sqlflite/actions/workflows/ci.yml)
-[![Supported Python Versions](https://img.shields.io/pypi/pyversions/ibis-sqlflite)](https://pypi.org/project/ibis-sqlflite/)
-[![PyPI version](https://badge.fury.io/py/ibis-sqlflite.svg)](https://badge.fury.io/py/ibis-sqlflite)
-[![PyPI Downloads](https://img.shields.io/pypi/dm/ibis-sqlflite.svg)](https://pypi.org/project/ibis-sqlflite/)
+[<img src="https://img.shields.io/badge/GitHub-gizmodata%2Fibis--gizmosql-blue.svg?logo=Github">](https://github.com/ibis-project/ibis-gizmosql)
+[![ibis-gizmosql-ci](https://github.com/gizmodata/ibis-gizmosql/actions/workflows/ci.yml/badge.svg)](https://github.com/gizmodata/ibis-gizmosql/actions/workflows/ci.yml)
+[![Supported Python Versions](https://img.shields.io/pypi/pyversions/ibis-gizmosql)](https://pypi.org/project/ibis-gizmosql/)
+[![PyPI version](https://badge.fury.io/py/ibis-gizmosql.svg)](https://badge.fury.io/py/ibis-gizmosql)
+[![PyPI Downloads](https://img.shields.io/pypi/dm/ibis-gizmosql.svg)](https://pypi.org/project/ibis-gizmosql/)
 
 # Setup (to run locally)
 
 ## Install Python package
-You can install `ibis-sqlflite` from PyPi or from source.
+You can install `ibis-gizmosql` from PyPi or from source.
 
 ### Option 1 - from PyPi
 ```shell
@@ -20,14 +20,14 @@ python3 -m venv .venv
 # Activate the virtual environment
 . .venv/bin/activate
 
-pip install ibis-sqlflite
+pip install ibis-gizmosql
 ```
 
 ### Option 2 - from source - for development
 ```shell
-git clone https://github.com/prmoore77/ibis-sqlflite
+git clone https://github.com/gizmodata/ibis-gizmosql
 
-cd ibis-sqlflite
+cd ibis-gizmosql
 
 # Create the virtual environment
 python3 -m venv .venv
@@ -38,51 +38,51 @@ python3 -m venv .venv
 # Upgrade pip, setuptools, and wheel
 pip install --upgrade pip setuptools wheel
 
-# Install Spark Connect Proxy - in editable mode with client and dev dependencies
+# Install the Ibis GizmoSQL back-end - in editable mode with client and dev dependencies
 pip install --editable .[dev,test]
 ```
 
 ### Note
 For the following commands - if you running from source and using `--editable` mode (for development purposes) - you will need to set the PYTHONPATH environment variable as follows:
 ```shell
-export PYTHONPATH=$(pwd)/ibis_sqlflite
+export PYTHONPATH=$(pwd)/ibis_gizmosql
 ```
 
 ### Usage
-In this example - we'll start a SQLFlite server with the DuckDB back-end in Docker, and connect to it from Python using Ibis.
+In this example - we'll start a GizmoSQL server with the DuckDB back-end in Docker, and connect to it from Python using Ibis.
 
-First - start the SQLFlite server - which by default mounts a small TPC-H database:
+First - start the GizmoSQL server - which by default mounts a small TPC-H database:
 ```shell
-docker run --name sqlflite \
+docker run --name gizmosql \
            --detach \
            --rm \
            --tty \
            --init \
            --publish 31337:31337 \
            --env TLS_ENABLED="1" \
-           --env SQLFLITE_PASSWORD="sqlflite_password" \
+           --env GIZMOSQL_PASSWORD="gizmosql_password" \
            --env PRINT_QUERIES="1" \
            --pull missing \
-           voltrondata/sqlflite:latest
+           gizmodata/gizmosql:latest
 ```
 
-Next - connect to the SQLFlite server from Python using Ibis by running this Python code:
+Next - connect to the GizmoSQL server from Python using Ibis by running this Python code:
 ```python
 import os
 import ibis
 from ibis import _
 
 # Kwarg connection example
-con = ibis.sqlflite.connect(host="localhost",
-                            user=os.getenv("SQLFLITE_USERNAME", "sqlflite_username"),
-                            password=os.getenv("SQLFLITE_PASSWORD", "sqlflite_password"),
+con = ibis.gizmosql.connect(host="localhost",
+                            user=os.getenv("GIZMOSQL_USERNAME", "gizmosql_username"),
+                            password=os.getenv("GIZMOSQL_PASSWORD", "gizmosql_password"),
                             port=31337,
                             use_encryption=True,
                             disable_certificate_verification=True
                             )
 
 # URL connection example
-# con = ibis.connect("sqlflite://sqlflite_username:sqlflite_password@localhost:31337?disableCertificateVerification=True&useEncryption=True")
+# con = ibis.connect("gizmosql://gizmosql_username:gizmosql_password@localhost:31337?disableCertificateVerification=True&useEncryption=True")
 
 print(con.tables)
 

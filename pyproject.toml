@@ -3,12 +3,12 @@ requires      = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["ibis_sqlflite"]
+packages = ["ibis_gizmosql"]
 
 [project]
-name = "ibis-sqlflite"
+name = "ibis-gizmosql"
 version = "0.0.2"
-description = "An Ibis backend for SQLFlite"
+description = "An Ibis backend for GizmoSQL"
 readme = "README.md"
 authors = [{ name = "Philip Moore", email = "prmoore77@hotmail.com" }]
 license = { file = "LICENSE" }
@@ -17,7 +17,7 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
 ]
-keywords = ["ibis", "sqlflite", "ibis-framework"]
+keywords = ["ibis", "gizmosql", "ibis-framework"]
 dependencies = [
   "duckdb==1.1.0",
   "adbc-driver-flightsql",
@@ -31,7 +31,7 @@ dependencies = [
 requires-python = ">=3.9"
 
 [project.entry-points."ibis.backends"]
-sqlflite = "ibis_sqlflite"
+gizmosql = "ibis_gizmosql"
 
 [project.optional-dependencies]
 test = [
@@ -51,7 +51,7 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/prmoore77/ibis-sqlflite"
+Homepage = "https://github.com/gizmodata/ibis-gizmosql"
 
 [tool.bumpver]
 current_version = "0.0.2"
@@ -65,6 +65,6 @@ tag = true
     '^version = "{version}"$',
     '^current_version = "{version}"$',
 ]
-"ibis_sqlflite/__init__.py" = [
+"ibis_gizmosql/__init__.py" = [
     '^__version__ = "{version}"$',
 ]
