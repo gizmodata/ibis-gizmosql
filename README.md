@@ -1,7 +1,7 @@
 # ibis-gizmosql
 An [Ibis](https://ibis-project.org) back-end for [GizmoSQL](https://github.com/gizmodata/gizmosql)
 
-[<img src="https://img.shields.io/badge/GitHub-gizmodata%2Fibis--gizmosql-blue.svg?logo=Github">](https://github.com/ibis-project/ibis-gizmosql)
+[<img src="https://img.shields.io/badge/GitHub-gizmodata%2Fibis--gizmosql-blue.svg?logo=Github">](https://github.com/gizmodata/ibis-gizmosql)
 [![ibis-gizmosql-ci](https://github.com/gizmodata/ibis-gizmosql/actions/workflows/ci.yml/badge.svg)](https://github.com/gizmodata/ibis-gizmosql/actions/workflows/ci.yml)
 [![Supported Python Versions](https://img.shields.io/pypi/pyversions/ibis-gizmosql)](https://pypi.org/project/ibis-gizmosql/)
 [![PyPI version](https://badge.fury.io/py/ibis-gizmosql.svg)](https://badge.fury.io/py/ibis-gizmosql)
