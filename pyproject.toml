@@ -19,12 +19,12 @@ classifiers = [
 ]
 keywords = ["ibis", "gizmosql", "ibis-framework"]
 dependencies = [
-  "duckdb==1.1.*",
-  "adbc-driver-flightsql==1.2.*",
-  "ibis-framework==9.5.*",
-  "pyarrow==17.0.*",
+  "duckdb==1.2.*",
+  "adbc-driver-flightsql==1.4.*",
+  "ibis-framework==10.1.*",
+  "pyarrow==19.0.*",
   "pyarrow-hotfix==0.6",
-  "numpy==2.1.*",
+  "numpy==2.2.*",
   "pandas==2.2.*",
   "rich==13.9.*",
 ]
