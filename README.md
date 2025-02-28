@@ -1,5 +1,5 @@
 # ibis-gizmosql
-An [Ibis](https://ibis-project.org) back-end for [GizmoSQL](https://github.com/gizmodata/gizmosql)
+An [Ibis](https://ibis-project.org) back-end for [GizmoSQL](https://gizmodata.com/gizmosql)
 
 [<img src="https://img.shields.io/badge/GitHub-gizmodata%2Fibis--gizmosql-blue.svg?logo=Github">](https://github.com/gizmodata/ibis-gizmosql)
 [![ibis-gizmosql-ci](https://github.com/gizmodata/ibis-gizmosql/actions/workflows/ci.yml/badge.svg)](https://github.com/gizmodata/ibis-gizmosql/actions/workflows/ci.yml)
@@ -52,6 +52,16 @@ export PYTHONPATH=$(pwd)/ibis_gizmosql
 In this example - we'll start a GizmoSQL server with the DuckDB back-end in Docker, and connect to it from Python using Ibis.
 
 First - start the GizmoSQL server - which by default mounts a small TPC-H database:
+
+**Note** - This assumes that you have your Github Access Token stored as an env var named `{GITHUB_ACCESS_TOKEN}`.  See: [Creating a personal access token](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) for more information.
+
+> [!NOTE]   
+> GizmoSQL is a licensed product.  You must purchase a license to acquire a Github token and license key file.  You can purchase a license key from [GizmoData](https://gizmodata.com/gizmosql).
+
+```bash
+# Authenticate to Github Docker Registry - replace USERNAME with your Github username
+echo ${GITHUB_ACCESS_TOKEN} | docker login ghcr.io -u prmoore77 --password-stdin
+
 ```shell
 docker run --name gizmosql \
            --detach \
@@ -59,11 +69,13 @@ docker run --name gizmosql \
            --tty \
            --init \
            --publish 31337:31337 \
+           --volume $(pwd)/license_files:/opt/gizmosql/license_files \
+           --env LICENSE_KEY_FILENAME="license_files/license_key.txt" \
            --env TLS_ENABLED="1" \
            --env GIZMOSQL_PASSWORD="gizmosql_password" \
            --env PRINT_QUERIES="1" \
            --pull missing \
-           gizmodata/gizmosql:latest
+           ghcr.io/gizmodata/gizmosql:latest
 ```
 
 Next - connect to the GizmoSQL server from Python using Ibis by running this Python code:
