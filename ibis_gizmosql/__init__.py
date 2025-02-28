@@ -34,7 +34,7 @@ from ibis.common.dispatch import lazy_singledispatch
 from ibis.expr.operations.udf import InputType
 from ibis.util import deprecated
 
-__version__ = "0.0.5"
+__version__ = "0.0.6"
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, MutableMapping, Sequence
