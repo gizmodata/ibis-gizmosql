@@ -2,6 +2,7 @@
 An [Ibis](https://ibis-project.org) back-end for [GizmoSQL](https://gizmodata.com/gizmosql)
 
 [<img src="https://img.shields.io/badge/GitHub-gizmodata%2Fibis--gizmosql-blue.svg?logo=Github">](https://github.com/gizmodata/ibis-gizmosql)
+[<img src="https://img.shields.io/badge/GitHub-gizmodata%2Fgizmosql--public-blue.svg?logo=Github">](https://github.com/gizmodata/gizmosql-public)
 [![ibis-gizmosql-ci](https://github.com/gizmodata/ibis-gizmosql/actions/workflows/ci.yml/badge.svg)](https://github.com/gizmodata/ibis-gizmosql/actions/workflows/ci.yml)
 [![Supported Python Versions](https://img.shields.io/pypi/pyversions/ibis-gizmosql)](https://pypi.org/project/ibis-gizmosql/)
 [![PyPI version](https://badge.fury.io/py/ibis-gizmosql.svg)](https://badge.fury.io/py/ibis-gizmosql)
@@ -59,9 +60,6 @@ First - start the GizmoSQL server - which by default mounts a small TPC-H databa
 > GizmoSQL is a licensed product.  You must purchase a license to acquire a Github token and license key file.  You can purchase a license key from [GizmoData](https://gizmodata.com/gizmosql).
 
 ```bash
-# Authenticate to Github Docker Registry - replace USERNAME with your Github username
-echo ${GITHUB_ACCESS_TOKEN} | docker login ghcr.io -u prmoore77 --password-stdin
-
 ```shell
 docker run --name gizmosql \
            --detach \
@@ -75,7 +73,7 @@ docker run --name gizmosql \
            --env GIZMOSQL_PASSWORD="gizmosql_password" \
            --env PRINT_QUERIES="1" \
            --pull missing \
-           ghcr.io/gizmodata/gizmosql:latest
+           gizmodata/gizmosql:latest
 ```
 
 Next - connect to the GizmoSQL server from Python using Ibis by running this Python code:
