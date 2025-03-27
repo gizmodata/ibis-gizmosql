@@ -63,7 +63,6 @@ First - start the GizmoSQL server - which by default mounts a small TPC-H databa
 > To obtain a valid license key, please contact GizmoData LLC Sales at info@gizmodata.com
 
 ```bash
-```shell
 docker run --name gizmosql \
            --detach \
            --rm \
