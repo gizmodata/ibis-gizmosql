@@ -54,8 +54,6 @@ In this example - we'll start a GizmoSQL server with the DuckDB back-end in Dock
 
 First - start the GizmoSQL server - which by default mounts a small TPC-H database:
 
-**Note** - This assumes that you have your Github Access Token stored as an env var named `{GITHUB_ACCESS_TOKEN}`.  See: [Creating a personal access token](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) for more information.
-
 > [!NOTE]   
 > GizmoSQL is a licensed-product - you MUST have a valid license key to use it for production purposes.   
 > If you run GizmoSQL without a valid license key - it will print this warning message:   
