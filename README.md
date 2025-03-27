@@ -57,10 +57,12 @@ First - start the GizmoSQL server - which by default mounts a small TPC-H databa
 **Note** - This assumes that you have your Github Access Token stored as an env var named `{GITHUB_ACCESS_TOKEN}`.  See: [Creating a personal access token](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) for more information.
 
 > [!NOTE]   
-> GizmoSQL is a licensed-product - you MUST have a valid license key to use it for production purposes.  See repo: https://github.com/gizmodata/generate-jwt-license to generate a license key file.
+> GizmoSQL is a licensed-product - you MUST have a valid license key to use it for production purposes.   
 > If you run GizmoSQL without a valid license key - it will print this warning message:   
-> WARNING - GizmoSQL is currently running in unlicensed mode. This mode is intended for development, evaluation, or testing purposes only.   
-> To obtain a valid license key, please contact GizmoData LLC Sales at info@gizmodata.com
+```text
+WARNING - GizmoSQL is currently running in unlicensed mode. This mode is intended for development, evaluation, or testing purposes only.   
+          To obtain a valid license key, please contact GizmoData LLC Sales at info@gizmodata.com
+```
 
 ```bash
 docker run --name gizmosql \
