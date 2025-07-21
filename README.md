@@ -54,14 +54,6 @@ In this example - we'll start a GizmoSQL server with the DuckDB back-end in Dock
 
 First - start the GizmoSQL server - which by default mounts a small TPC-H database:
 
-> [!NOTE]   
-> GizmoSQL is a licensed-product - you MUST have a valid license key to use it for production purposes.   
-> If you run GizmoSQL without a valid license key - it will print this warning message:   
-```text
-WARNING - GizmoSQL is currently running in unlicensed mode. This mode is intended for development, evaluation, or testing purposes only.   
-          To obtain a valid license key, please contact GizmoData LLC Sales at info@gizmodata.com
-```
-
 ```bash
 docker run --name gizmosql \
            --detach \
