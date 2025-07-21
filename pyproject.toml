@@ -25,8 +25,9 @@ dependencies = [
   "pyarrow==21.0.*",
   "pyarrow-hotfix==0.7",
   "numpy==2.3.*",
+  "packaging==25.0",
   "pandas==2.3.*",
-  "rich==14.0.*",
+  "rich==14.0.*"
 ]
 requires-python = ">=3.10"
 
