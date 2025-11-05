@@ -7,7 +7,7 @@ packages = ["ibis_gizmosql"]
 
 [project]
 name = "ibis-gizmosql"
-version = "0.0.10"
+version = "0.0.11"
 description = "An Ibis backend for GizmoSQL"
 readme = "README.md"
 authors = [{ name = "Philip Moore", email = "philip@gizmodata.com" }]
@@ -56,7 +56,7 @@ dev = [
 Homepage = "https://github.com/gizmodata/ibis-gizmosql"
 
 [tool.bumpver]
-current_version = "0.0.10"
+current_version = "0.0.11"
 version_pattern = "MAJOR.MINOR.PATCH[PYTAGNUM]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
