@@ -499,7 +499,7 @@ class Backend(
         vendor_version = self.con.adbc_get_info().get("vendor_version")
 
         if not re.search(pattern="^duckdb ", string=vendor_version):
-            raise exc.UnsupportedBackendType(f"Unsupported SQFLite server backend: '{vendor_version}'")
+            raise exc.UnsupportedBackendType(f"Unsupported GizmoSQL server backend: '{vendor_version}'")
 
         # Default timezone, can't be set with `config`
         self.settings["timezone"] = "UTC"
