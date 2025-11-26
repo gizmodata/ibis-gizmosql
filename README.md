@@ -68,6 +68,9 @@ docker run --name gizmosql \
            gizmodata/gizmosql:latest
 ```
 
+> [!IMPORTANT]
+> The GizmoSQL server must be started with the DuckDB (default) back-end.  The SQLite back-end is not supported.
+
 Next - connect to the GizmoSQL server from Python using Ibis by running this Python code:
 ```python
 import os

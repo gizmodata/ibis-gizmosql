@@ -21,7 +21,7 @@ keywords = ["ibis", "gizmosql", "ibis-framework", "flightsql", "duckdb", "adbc",
 dependencies = [
   "ibis-framework==11.0.*",
   "duckdb==1.4.*",
-  "adbc-driver-flightsql==1.8.*",
+  "adbc-driver-flightsql==1.9.*",
   "pyarrow==22.0.*",
   "pyarrow-hotfix==0.7",
   "numpy==2.3.*",
