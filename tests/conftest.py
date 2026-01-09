@@ -4,7 +4,7 @@ import ibis
 import time
 
 # Constants
-GIZMOSQL_PORT = 31338
+GIZMOSQL_PORT = 31337
 
 
 # Function to wait for a specific log message indicating the container is ready
