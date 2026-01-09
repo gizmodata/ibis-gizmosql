@@ -34,7 +34,7 @@ from packaging.version import parse as vparse
 
 from ibis_gizmosql.converter import DuckDBPandasData
 
-__version__ = "0.0.12"
+__version__ = "0.0.13"
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, MutableMapping, Sequence
