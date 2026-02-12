@@ -614,8 +614,8 @@ except (ImportError, AttributeError):
 # Other backends whose tests we should not run -- we only test gizmosql.
 _OTHER_BACKENDS = frozenset({
     "athena", "bigquery", "clickhouse", "databricks", "datafusion", "druid",
-    "exasol", "flink", "impala", "materialize", "mssql", "mysql", "oracle",
-    "polars", "postgres", "postgresql", "pyspark", "risingwave",
+    "duckdb", "exasol", "flink", "impala", "materialize", "mssql", "mysql",
+    "oracle", "polars", "postgres", "postgresql", "pyspark", "risingwave",
     "singlestoredb", "snowflake", "sqlite", "trino",
 })
 
