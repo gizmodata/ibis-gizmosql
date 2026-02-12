@@ -45,10 +45,10 @@ class TestConf(BackendTest):
     supports_arrays = True
     supports_structs = True
     supports_json = True
-    supports_tpch = False
+    supports_tpch = True
     native_bool = True
     returned_timestamp_unit = "us"
-    stateful = False
+    stateful = True
     driver_supports_multiple_statements = False
     rounding_method = "away_from_zero"
 
@@ -68,6 +68,12 @@ class TestConf(BackendTest):
             use_encryption=True,
             disable_certificate_verification=True,
         )
+
+    def load_tpch(self) -> None:
+        """Load TPC-H data using DuckDB's built-in dbgen."""
+        con = self.connection
+        with con._safe_raw_sql("CALL dbgen(sf=0.17)") as cur:
+            cur.fetchall()
 
     def _load_data(self, **_: Any) -> None:
         """Load test data into the GizmoSQL server."""
@@ -693,8 +699,6 @@ def pytest_collection_modifyitems(config, items):
         "test_cast_non_null": "FlightSQL schema doesn't preserve NOT NULL",
         # PyArrow Dataset: materialization guard
         "test_create_table_in_memory[pyarrow dataset]": "PyArrow Dataset materialization not supported",
-        # Missing TPC-H data
-        "test_ibis_basics": "TPC-H lineitem table not loaded",
     }
     for item in items:
         reason = _xfails.get(item.name)
