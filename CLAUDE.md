@@ -44,14 +44,19 @@ The test fixture connects to a GizmoSQL server at `grpc+tls://localhost:31337` (
 pip install -e ".[dev,test]"
 ```
 
+## Changelog
+
+Update `CHANGELOG.md` on every change (unless very minor). Follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format with Added/Changed/Fixed/Removed sections.
+
 ## Release Checklist
 
 1. Ensure all tests pass: `pytest -x -n auto --dist loadgroup`
-2. Update version: `bumpver update --minor` (or `--major` / `--patch`)
+2. Update `CHANGELOG.md` with all changes since the last release
+3. Update version: `bumpver update --minor` (or `--major` / `--patch`)
    - This updates `pyproject.toml` and `ibis_gizmosql/__init__.py` automatically
    - Creates a git commit and tag
-3. Push with tags: `git push && git push --tags`
-4. Build and publish: `python -m build && twine upload dist/*`
+4. Push with tags: `git push && git push --tags`
+5. Build and publish: `python -m build && twine upload dist/*`
 
 ## File Layout
 
