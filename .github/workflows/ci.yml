@@ -14,6 +14,24 @@ jobs:
   test:
     name: Run tests
     runs-on: ubuntu-latest
+    services:
+      gizmosql:
+        image: gizmodata/gizmosql:latest
+        ports:
+          - 31337:31337
+        env:
+          GIZMOSQL_USERNAME: ibis
+          GIZMOSQL_PASSWORD: ibis_password
+          TLS_ENABLED: "1"
+          PRINT_QUERIES: "0"
+          DATABASE_FILENAME: ":memory:"
+        options: >-
+          --init
+          --health-cmd "nc -z localhost 31337 || exit 1"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
     steps:
       - uses: actions/checkout@v4
 
@@ -30,38 +48,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install .[test]
 
-      - name: Start GizmoSQL Docker container
-        run: |
-          docker pull gizmodata/gizmosql:latest
-          docker run -d --name ibis-gizmosql-test \
-            -p 31337:31337 \
-            --init \
-            -e GIZMOSQL_USERNAME=ibis \
-            -e GIZMOSQL_PASSWORD=ibis_password \
-            -e TLS_ENABLED=1 \
-            -e PRINT_QUERIES=0 \
-            -e DATABASE_FILENAME=":memory:" \
-            gizmodata/gizmosql:latest
-
-      - name: Wait for GizmoSQL to be ready
-        run: |
-          for i in $(seq 1 60); do
-            if docker logs ibis-gizmosql-test 2>&1 | grep -q "GizmoSQL server - started"; then
-              echo "GizmoSQL server is ready"
-              exit 0
-            fi
-            sleep 1
-          done
-          echo "Timed out waiting for GizmoSQL server"
-          docker logs ibis-gizmosql-test
-          exit 1
-
       - name: Run tests
         run: pytest -x -n auto --dist loadgroup
-
-      - name: Stop GizmoSQL container
-        if: always()
-        run: docker stop ibis-gizmosql-test || true
 
   publish:
     name: Build and publish to PyPI
