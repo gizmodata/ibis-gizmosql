@@ -27,7 +27,7 @@ jobs:
           DATABASE_FILENAME: ":memory:"
         options: >-
           --init
-          --health-cmd "nc -z localhost 31337 || exit 1"
+          --health-cmd "bash -c '</dev/tcp/localhost/31337' 2>/dev/null"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
