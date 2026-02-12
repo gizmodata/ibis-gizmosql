@@ -37,6 +37,9 @@ from ibis_gizmosql.converter import DuckDBPandasData
 
 __version__ = "0.1.0"
 
+# Default batch size for ADBC bulk ingest operations
+_INGEST_BATCH_SIZE = 10_000
+
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, MutableMapping, Sequence
     from urllib.parse import ParseResult
@@ -649,13 +652,13 @@ class Backend(
             *,
             table_name: str | None = None,
             columns: Mapping[str, str] | None = None,
+            batch_size: int = _INGEST_BATCH_SIZE,
             **kwargs,
     ) -> ir.Table:
         """Read newline-delimited JSON into an ibis table.
 
-        ::: {.callout-note}
-        ## This feature requires duckdb>=0.7.0
-        :::
+        Reads the file(s) locally using DuckDB, then uploads to GizmoSQL
+        via batched ADBC bulk ingest.
 
         Parameters
         ----------
@@ -665,6 +668,8 @@ class Backend(
             Optional table name
         columns
             Optional mapping from string column name to duckdb type string.
+        batch_size
+            Number of rows per Arrow batch for ADBC ingest. Default 10,000.
         **kwargs
             Additional keyword arguments passed to DuckDB's `read_json_auto` function.
 
@@ -698,16 +703,12 @@ class Backend(
                 )
             )
 
-        self._create_temp_view(
-            table_name,
-            sg.select(STAR).from_(
-                self.compiler.f.read_json_auto(
-                    util.normalize_filenames(paths), *options
-                )
-            ),
+        source = sg.select(STAR).from_(
+            self.compiler.f.read_json_auto(
+                util.normalize_filenames(paths), *options
+            )
         )
-
-        return self.table(table_name)
+        return self._read_local_and_ingest(table_name, source, batch_size=batch_size)
 
     def read_csv(
             self,
@@ -717,9 +718,13 @@ class Backend(
             table_name: str | None = None,
             columns: Mapping[str, str | dt.DataType] | None = None,
             types: Mapping[str, str | dt.DataType] | None = None,
+            batch_size: int = _INGEST_BATCH_SIZE,
             **kwargs: Any,
     ) -> ir.Table:
         """Register a CSV file as a table in the current database.
+
+        Reads the file(s) locally using DuckDB, then uploads to GizmoSQL
+        via batched ADBC bulk ingest.
 
         Parameters
         ----------
@@ -733,6 +738,8 @@ class Backend(
             An optional mapping of **all** column names to their types.
         types
             An optional mapping of a **subset** of column names to their types.
+        batch_size
+            Number of rows per Arrow batch for ADBC ingest. Default 10,000.
         **kwargs
             Additional keyword arguments passed to DuckDB loading function. See
             https://duckdb.org/docs/data/csv for more information.
@@ -741,54 +748,6 @@ class Backend(
         -------
         ir.Table
             The just-registered table
-
-        Examples
-        --------
-        Generate some data
-
-        >>> import tempfile
-        >>> data = b'''
-        ... lat,lon,geom
-        ... 1.0,2.0,POINT (1 2)
-        ... 2.0,3.0,POINT (2 3)
-        ... '''
-        >>> with tempfile.NamedTemporaryFile(delete=False) as f:
-        ...     nbytes = f.write(data)
-
-        Import Ibis
-
-        >>> import ibis
-        >>> from ibis import _
-        >>> ibis.options.interactive = True
-        >>> con = ibis.duckdb.connect()
-
-        Read the raw CSV file
-
-        >>> t = con.read_csv(f.name)
-        >>> t
-        ┏━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━┓
-        ┃ lat     ┃ lon     ┃ geom        ┃
-        ┡━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━┩
-        │ float64 │ float64 │ string      │
-        ├─────────┼─────────┼─────────────┤
-        │     1.0 │     2.0 │ POINT (1 2) │
-        │     2.0 │     3.0 │ POINT (2 3) │
-        └─────────┴─────────┴─────────────┘
-
-        Load the `spatial` extension and read the CSV file again, using
-        specific column types
-
-        >>> con.load_extension("spatial")
-        >>> t = con.read_csv(f.name, types={"geom": "geometry"})
-        >>> t
-        ┏━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┓
-        ┃ lat     ┃ lon     ┃ geom                 ┃
-        ┡━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━┩
-        │ float64 │ float64 │ geospatial:geometry  │
-        ├─────────┼─────────┼──────────────────────┤
-        │     1.0 │     2.0 │ <POINT (1 2)>        │
-        │     2.0 │     3.0 │ <POINT (2 3)>        │
-        └─────────┴─────────┴──────────────────────┘
         """
         paths = util.normalize_filenames(paths)
 
@@ -797,9 +756,6 @@ class Backend(
 
         # auto_detect and columns collide, so we set auto_detect=True
         # unless COLUMNS has been specified
-        if any(source.startswith(("http://", "https://", "s3://")) for source in paths):
-            self._load_extensions(["httpfs"])
-
         kwargs.setdefault("header", True)
         kwargs["auto_detect"] = kwargs.pop("auto_detect", columns is None)
         # TODO: clean this up
@@ -809,24 +765,16 @@ class Backend(
 
         def make_struct_argument(obj: Mapping[str, str | dt.DataType]) -> sge.Struct:
             expressions = []
-            geospatial = False
             dialect = self.compiler.dialect
-            possible_geospatial_types = (
-                sge.DataType.Type.GEOGRAPHY,
-                sge.DataType.Type.GEOMETRY,
-            )
 
             for name, typ in obj.items():
                 sgtype = sg.parse_one(typ, read=dialect, into=sge.DataType)
-                geospatial |= sgtype.this in possible_geospatial_types
                 prop = sge.PropertyEQ(
                     this=sge.to_identifier(name),
                     expression=sge.convert(sgtype.sql(dialect)),
                 )
                 expressions.append(prop)
 
-            if geospatial:
-                self._load_extensions(["spatial"])
             return sge.Struct(expressions=expressions)
 
         if columns is not None:
@@ -835,12 +783,8 @@ class Backend(
         if types is not None:
             options.append(C.types.eq(make_struct_argument(types)))
 
-        self._create_temp_view(
-            table_name,
-            sg.select(STAR).from_(self.compiler.f.read_csv(paths, *options)),
-        )
-
-        return self.table(table_name)
+        source = sg.select(STAR).from_(self.compiler.f.read_csv(paths, *options))
+        return self._read_local_and_ingest(table_name, source, batch_size=batch_size)
 
     def read_parquet(
             self,
@@ -848,9 +792,13 @@ class Backend(
             /,
             *,
             table_name: str | None = None,
+            batch_size: int = _INGEST_BATCH_SIZE,
             **kwargs: Any,
     ) -> ir.Table:
         """Register a parquet file as a table in the current database.
+
+        Reads the file(s) locally using DuckDB, then uploads to GizmoSQL
+        via batched ADBC bulk ingest.
 
         Parameters
         ----------
@@ -860,6 +808,8 @@ class Backend(
         table_name
             An optional name to use for the created table. This defaults to
             a sequentially generated name.
+        batch_size
+            Number of rows per Arrow batch for ADBC ingest. Default 10,000.
         **kwargs
             Additional keyword arguments passed to DuckDB loading function.
             See https://duckdb.org/docs/data/parquet for more information.
@@ -873,22 +823,20 @@ class Backend(
 
         table_name = table_name or util.gen_name("read_parquet")
 
-        if any(path.startswith(("http://", "https://", "s3://")) for path in paths):
-            self._load_extensions(["httpfs"])
-
         options = [
             sg.to_identifier(key).eq(sge.convert(val)) for key, val in kwargs.items()
         ]
-        self._create_temp_view(
-            table_name,
-            sg.select(STAR).from_(self.compiler.f.read_parquet(paths, *options)),
-        )
-        return self.table(table_name)
+        source = sg.select(STAR).from_(self.compiler.f.read_parquet(paths, *options))
+        return self._read_local_and_ingest(table_name, source, batch_size=batch_size)
 
     def read_delta(
-            self, path: str | Path, /, *, table_name: str | None = None, **kwargs: Any
+            self, path: str | Path, /, *, table_name: str | None = None,
+            batch_size: int = _INGEST_BATCH_SIZE, **kwargs: Any
     ) -> ir.Table:
         """Register a Delta Lake table as a table in the current database.
+
+        Reads the Delta table locally using DuckDB, then uploads to GizmoSQL
+        via batched ADBC bulk ingest.
 
         Parameters
         ----------
@@ -897,6 +845,8 @@ class Backend(
         table_name
             An optional name to use for the created table. This defaults to
             a sequentially generated name.
+        batch_size
+            Number of rows per Arrow batch for ADBC ingest. Default 10,000.
         kwargs
             Additional keyword arguments passed to deltalake.DeltaTable.
 
@@ -907,23 +857,14 @@ class Backend(
         """
         (path,) = util.normalize_filenames(path)
 
-        extensions = ["delta"]
-        if path.startswith(("http://", "https://", "s3://")):
-            extensions.append("httpfs")
-
         table_name = table_name or util.gen_name("read_delta")
 
         options = [
             sg.to_identifier(key).eq(sge.convert(val)) for key, val in kwargs.items()
         ]
 
-        self._load_extensions(extensions)
-
-        self._create_temp_view(
-            table_name,
-            sg.select(STAR).from_(self.compiler.f.delta_scan(path, *options)),
-        )
-        return self.table(table_name)
+        source = sg.select(STAR).from_(self.compiler.f.delta_scan(path, *options))
+        return self._read_local_and_ingest(table_name, source, batch_size=batch_size)
 
     def list_tables(
             self, *, like: str | None = None, database: tuple[str, str] | str | None = None
@@ -1504,6 +1445,42 @@ class Backend(
             }
         )
 
+    def _read_local_and_ingest(
+        self,
+        table_name: str,
+        source,
+        *,
+        batch_size: int = _INGEST_BATCH_SIZE,
+    ) -> ir.Table:
+        """Read data locally with DuckDB and upload to GizmoSQL via ADBC bulk ingest.
+
+        Uses a local ephemeral DuckDB connection to execute the read SQL
+        (e.g., read_csv, read_parquet), then streams Arrow record batches
+        to the GizmoSQL server via ADBC bulk ingest.
+
+        Parameters
+        ----------
+        table_name
+            Destination table name on the GizmoSQL server.
+        source
+            A sqlglot SELECT expression (e.g., SELECT * FROM read_csv(...)).
+        batch_size
+            Number of rows per Arrow record batch. Default 10,000.
+        """
+        import duckdb
+
+        sql = source.sql(dialect="duckdb")
+
+        local_con = duckdb.connect()
+        try:
+            reader = local_con.execute(sql).fetch_record_batch(batch_size)
+            with self.con.cursor() as cur:
+                cur.adbc_ingest(table_name, reader, mode="replace")
+        finally:
+            local_con.close()
+
+        return self.table(table_name)
+
     @staticmethod
     def _normalize_arrow_schema(table):
         """Downcast Arrow "large" types to standard types for Flight SQL ingest.
@@ -1560,9 +1537,11 @@ class Backend(
         # Downcast large Arrow types for Flight SQL compatibility
         table = self._normalize_arrow_schema(table)
 
-        # Use ADBC bulk ingest to upload the PyArrow table to GizmoSQL
+        # Stream batches to GizmoSQL via ADBC bulk ingest
+        batches = table.to_batches(max_chunksize=_INGEST_BATCH_SIZE)
+        reader = pa.RecordBatchReader.from_batches(table.schema, batches)
         with self.con.cursor() as cur:
-            cur.adbc_ingest(op.name, table, mode="replace")
+            cur.adbc_ingest(op.name, reader, mode="replace")
 
     def _get_temp_view_definition(self, name: str, definition: str) -> str:
         return sge.Create(
