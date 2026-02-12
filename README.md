@@ -56,7 +56,7 @@ First - start the GizmoSQL server - which by default mounts an empty in-memory d
 
 ```bash
 docker run --name gizmosql \
-           --interactive \
+           --detach \
            --rm \
            --tty \
            --init \
