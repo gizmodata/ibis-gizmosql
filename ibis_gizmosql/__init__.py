@@ -18,18 +18,19 @@ import ibis.expr.schema as sch
 import ibis.expr.types as ir
 import sqlglot as sg
 import sqlglot.expressions as sge
-from adbc_driver_flightsql import dbapi as gizmosql, DatabaseOptions
+from adbc_driver_gizmosql import dbapi as gizmosql, DatabaseOptions
 from ibis import util
 from ibis.backends import (
     CanCreateDatabase,
+    CanListCatalog,
     DirectExampleLoader,
     HasCurrentCatalog,
     HasCurrentDatabase,
+    SupportsTempTables,
     UrlFromPath,
 )
 from ibis.backends.sql import SQLBackend
 from ibis.backends.sql.compilers.base import STAR, C
-from ibis.common.dispatch import lazy_singledispatch
 from packaging.version import parse as vparse
 
 from ibis_gizmosql.converter import DuckDBPandasData
@@ -64,7 +65,7 @@ class _Settings:
 
     def __setitem__(self, key, value):
         with self.con.cursor() as cur:
-            cur.execute(f"SET {key} = {str(value)!r}")
+            cur.execute(f"SET {key} = {str(value)!r}").fetchall()
 
     def __repr__(self):
         with self.con.cursor() as cur:
@@ -74,8 +75,10 @@ class _Settings:
 class Backend(
     SQLBackend,
     CanCreateDatabase,
+    CanListCatalog,
     HasCurrentCatalog,
     HasCurrentDatabase,
+    SupportsTempTables,
     UrlFromPath,
     DirectExampleLoader,
 ):
@@ -233,6 +236,7 @@ class Backend(
             else:
                 table = obj
 
+            self._run_pre_execute_hooks(table)
             query = self.compiler.to_sqlglot(table)
         else:
             query = None
@@ -266,6 +270,9 @@ class Backend(
         # This is the same table as initial_table unless overwrite == True
         final_table = sg.table(name, catalog=catalog, db=database, quoted=quoted)
         with self._safe_raw_sql(create_stmt) as create_table_cur:
+            # Force lazy execution: the CREATE TABLE must take effect
+            # before the INSERT below can reference the new table.
+            create_table_cur.fetchall()
             with self.con.cursor() as cur:
                 if query is not None:
                     insert_stmt = sge.insert(
@@ -276,7 +283,7 @@ class Backend(
                 if overwrite:
                     cur.execute(
                         sge.Drop(kind="TABLE", this=final_table, exists=True).sql(dialect=self.dialect)
-                    )
+                    ).fetchall()
                     # TODO: This branching should be removed once DuckDB >=0.9.3 is
                     # our lower bound (there's an upstream bug in 0.9.2 that
                     # disallows renaming temp tables)
@@ -290,17 +297,18 @@ class Backend(
                                 expression=sg.select(STAR).from_(initial_table),
                                 properties=sge.Properties(expressions=properties),
                             ).sql(dialect=self.dialect)
-                        )
+                        ).fetchall()
                         cur.execute(
                             sge.Drop(kind="TABLE", this=initial_table, exists=True).sql(dialect=self.dialect)
-                        )
+                        ).fetchall()
                     else:
                         cur.execute(
-                            sge.AlterTable(
+                            sge.Alter(
                                 this=initial_table,
-                                actions=[sge.RenameTable(this=final_table)],
+                                kind="TABLE",
+                                actions=[sge.AlterRename(this=final_table)],
                             ).sql(dialect=self.dialect)
-                        )
+                        ).fetchall()
 
         return self.table(name, database=(catalog, database))
 
@@ -350,8 +358,14 @@ class Backend(
             )
         ).sql(self.dialect)
 
-        with self._safe_raw_sql(query) as cur:
-            meta = cur.fetch_arrow_table()
+        try:
+            with self._safe_raw_sql(query) as cur:
+                meta = cur.fetch_arrow_table()
+        except Exception as e:
+            err_msg = str(e)
+            if "does not exist" in err_msg or "Table with name" in err_msg:
+                raise exc.TableNotFound(table_name) from e
+            raise
 
         names = meta["column_name"].to_pylist()
         types = meta["column_type"].to_pylist()
@@ -371,6 +385,12 @@ class Backend(
         try:
             yield cur
         finally:
+            # GizmoSQL uses lazy execution over Flight SQL: DML results must
+            # be consumed (fetched) for the statement to take effect.  If the
+            # caller already consumed them (e.g. via fetch_arrow_table()) the
+            # second fetch is harmless – we just suppress any errors.
+            with contextlib.suppress(Exception):
+                cur.fetchall()
             cur.close()
 
     def list_catalogs(self, like: str | None = None) -> list[str]:
@@ -539,9 +559,13 @@ class Backend(
         self.settings["timezone"] = "UTC"
 
         # setting this to false disables magic variables-as-tables discovery,
-        # hopefully eliminating large classes of bugs
+        # hopefully eliminating large classes of bugs (DuckDB Python-specific,
+        # not available on GizmoSQL Flight SQL server)
         if vparse(self.version) > vparse("1"):
-            self.settings["python_enable_replacements"] = False
+            try:
+                self.settings["python_enable_replacements"] = False
+            except Exception:
+                pass
 
         self._record_batch_readers_consumed = {}
 
@@ -1184,6 +1208,7 @@ class Backend(
         >>> os.path.exists("/tmp/test.xlsx")
         True
         """
+        self._run_pre_execute_hooks(expr)
         query = self.compile(expr, params=params)
         kwargs["sheet"] = sheet
         kwargs["header"] = header
@@ -1364,11 +1389,12 @@ class Backend(
         import pyarrow as pa
         import pyarrow_hotfix  # noqa: F401
 
+        self._run_pre_execute_hooks(expr)
         table = expr.as_table()
         sql = self.compile(table, limit=limit, params=params)
 
         def batch_producer(cur):
-            yield from cur.fetch_record_batch(rows_per_batch=chunk_size)
+            yield from cur.fetch_record_batch()
 
         result = self.raw_sql(sql)
         return pa.ipc.RecordBatchReader.from_batches(
@@ -1384,7 +1410,15 @@ class Backend(
             limit: int | str | None = None,
             **kwargs: Any,
     ) -> pa.Table:
-        return self._to_pyarrow_table(expr, params=params, limit=limit)
+        self._run_pre_execute_hooks(expr)
+        table = self._to_pyarrow_table(expr, params=params, limit=limit)
+        if isinstance(expr, ir.Column):
+            # Return a ChunkedArray for column expressions
+            return table.column(0)
+        elif isinstance(expr, ir.Scalar):
+            # Return a scalar for scalar expressions
+            return table.column(0)[0]
+        return table
 
     def execute(
             self,
@@ -1400,6 +1434,7 @@ class Backend(
         import pyarrow.types as pat
         import pyarrow_hotfix  # noqa: F401
 
+        self._run_pre_execute_hooks(expr)
         table = self._to_pyarrow_table(expr, params=params, limit=limit)
 
         df = pd.DataFrame(
@@ -1453,102 +1488,6 @@ class Backend(
         """
         return self._to_pyarrow_table(expr, params=params, limit=limit).torch()
 
-    @util.experimental
-    def to_parquet(
-            self,
-            expr: ir.Table,
-            /,
-            path: str | Path,
-            *,
-            params: Mapping[ir.Scalar, Any] | None = None,
-            **kwargs: Any,
-    ) -> None:
-        """Write the results of executing the given expression to a parquet file.
-
-        This method is eager and will execute the associated expression
-        immediately.
-
-        Parameters
-        ----------
-        expr
-            The ibis expression to execute and persist to parquet.
-        path
-            The data source. A string or Path to the parquet file.
-        params
-            Mapping of scalar parameter expressions to value.
-        **kwargs
-            DuckDB Parquet writer arguments. See
-            https://duckdb.org/docs/data/parquet/overview.html#writing-to-parquet-files
-            for details.
-
-        Examples
-        --------
-        Write out an expression to a single parquet file.
-
-        >>> import ibis
-        >>> penguins = ibis.examples.penguins.fetch()
-        >>> con = ibis.get_backend(penguins)
-        >>> con.to_parquet(penguins, "/tmp/penguins.parquet")
-
-        Write out an expression to a hive-partitioned parquet file.
-
-        >>> import tempfile
-        >>> penguins = ibis.examples.penguins.fetch()
-        >>> con = ibis.get_backend(penguins)
-
-        Partition on a single column.
-
-        >>> con.to_parquet(penguins, tempfile.mkdtemp(), partition_by="year")
-
-        Partition on multiple columns.
-
-        >>> con.to_parquet(penguins, tempfile.mkdtemp(), partition_by=("year", "island"))
-        """
-        query = self.compile(expr, params=params)
-        args = ["FORMAT 'parquet'", *(f"{k.upper()} {v!r}" for k, v in kwargs.items())]
-        copy_cmd = f"COPY ({query}) TO {str(path)!r} ({', '.join(args)})"
-        with self._safe_raw_sql(copy_cmd):
-            pass
-
-    @util.experimental
-    def to_csv(
-            self,
-            expr: ir.Table,
-            /,
-            path: str | Path,
-            *,
-            params: Mapping[ir.Scalar, Any] | None = None,
-            header: bool = True,
-            **kwargs: Any,
-    ) -> None:
-        """Write the results of executing the given expression to a CSV file.
-
-        This method is eager and will execute the associated expression
-        immediately.
-
-        Parameters
-        ----------
-        expr
-            The ibis expression to execute and persist to CSV.
-        path
-            The data source. A string or Path to the CSV file.
-        params
-            Mapping of scalar parameter expressions to value.
-        header
-            Whether to write the column names as the first line of the CSV file.
-        kwargs
-            DuckDB CSV writer arguments. https://duckdb.org/docs/data/csv/overview.html#parameters
-        """
-        query = self.compile(expr, params=params)
-        args = [
-            "FORMAT 'csv'",
-            f"HEADER {int(header)}",
-            *(f"{k.upper()} {v!r}" for k, v in kwargs.items()),
-        ]
-        copy_cmd = f"COPY ({query}) TO {str(path)!r} ({', '.join(args)})"
-        with self._safe_raw_sql(copy_cmd) as cur:
-            pass
-
     def _get_schema_using_query(self, query: str) -> sch.Schema:
         with self._safe_raw_sql(f"DESCRIBE {query}") as cur:
             rows = cur.fetch_arrow_table()
@@ -1565,15 +1504,65 @@ class Backend(
             }
         )
 
-    def _register_in_memory_table(self, op: ops.InMemoryTable) -> None:
-        raise exc.UnsupportedOperationError(
-            "GizmoSQL does not yet support registering in-memory tables (coming soon)."
-        )
+    @staticmethod
+    def _normalize_arrow_schema(table):
+        """Downcast Arrow "large" types to standard types for Flight SQL ingest.
 
-    def _finalize_memtable(self, name: str) -> None:
-        raise exc.UnsupportedOperationError(
-            "GizmoSQL does not yet support registering in-memory tables (coming soon)."
-        )
+        GizmoSQL's Flight SQL server doesn't handle LARGE_STRING,
+        LARGE_BINARY, etc.  Convert them to their standard counterparts.
+        """
+        import pyarrow as pa
+
+        _LARGE_TO_STANDARD = {
+            pa.large_string(): pa.string(),
+            pa.large_binary(): pa.binary(),
+            pa.large_utf8(): pa.utf8(),
+        }
+
+        new_fields = []
+        needs_cast = False
+        for field in table.schema:
+            new_type = _LARGE_TO_STANDARD.get(field.type)
+            if new_type is not None:
+                new_fields.append(field.with_type(new_type))
+                needs_cast = True
+            else:
+                new_fields.append(field)
+
+        if needs_cast:
+            new_schema = pa.schema(new_fields, metadata=table.schema.metadata)
+            return table.cast(new_schema)
+        return table
+
+    def _register_in_memory_table(self, op: ops.InMemoryTable) -> None:
+        import pyarrow as pa
+
+        data = op.data
+        schema = op.schema
+        try:
+            table = data.to_pyarrow(schema)
+        except AttributeError:
+            table = data.to_pyarrow_dataset(schema).to_table()
+
+        if table.num_rows == 0:
+            # ADBC ingest fails on empty tables over Flight SQL;
+            # create via DDL instead
+            type_mapper = self.compiler.type_mapper
+            columns = ", ".join(
+                f'"{col_name}" {type_mapper.to_string(schema[col_name])}'
+                for col_name in schema.names
+            )
+            create_sql = f'CREATE OR REPLACE TABLE "{op.name}" ({columns})'
+            with self._safe_raw_sql(create_sql):
+                pass
+            return
+
+        # Downcast large Arrow types for Flight SQL compatibility
+        table = self._normalize_arrow_schema(table)
+
+        # Use ADBC bulk ingest to upload the PyArrow table to GizmoSQL
+        with self.con.cursor() as cur:
+            cur.adbc_ingest(op.name, table, mode="replace")
 
     def _get_temp_view_definition(self, name: str, definition: str) -> str:
         return sge.Create(
@@ -1589,26 +1578,3 @@ class Backend(
             pass
 
 
-@lazy_singledispatch
-def _read_in_memory(source: Any, table_name: str, _conn: Backend, **_: Any):
-    raise NotImplementedError(
-        f"The `{_conn.name}` backend currently does not support "
-        f"reading data of {type(source)!r}"
-    )
-
-
-@_read_in_memory.register("polars.DataFrame")
-@_read_in_memory.register("polars.LazyFrame")
-@_read_in_memory.register("pyarrow.Table")
-@_read_in_memory.register("pandas.DataFrame")
-@_read_in_memory.register("pyarrow.dataset.Dataset")
-def _default(source, table_name, _conn, **_: Any):
-    _conn.con.register(table_name, source)
-
-
-@_read_in_memory.register("pyarrow.RecordBatchReader")
-def _pyarrow_rbr(source, table_name, _conn, **_: Any):
-    _conn.con.register(table_name, source)
-    # Ensure the reader isn't marked as started, in case the name is
-    # being overwritten.
-    _conn._record_batch_readers_consumed[table_name] = False

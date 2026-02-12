@@ -19,15 +19,15 @@ classifiers = [
 ]
 keywords = ["ibis", "gizmosql", "ibis-framework", "flightsql", "duckdb", "adbc", "gizmodata"]
 dependencies = [
-  "ibis-framework==11.0.*",
+  "ibis-framework==12.0.*",
   "duckdb==1.4.*",
-  "adbc-driver-flightsql==1.10.*",
-  "pyarrow==22.0.*",
+  "adbc-driver-gizmosql==0.1.*",
+  "pyarrow==23.0.*",
   "pyarrow-hotfix==0.7",
-  "numpy==2.3.*",
-  "packaging==25.0",
-  "pandas==2.3.*",
-  "rich==14.2.*"
+  "numpy==2.4.*",
+  "packaging==26.0",
+  "pandas==3.0.*",
+  "rich==14.3.*"
 ]
 requires-python = ">=3.10"
 
@@ -39,17 +39,33 @@ test = [
   "pytest",
   "pytest-snapshot",
   "pytest-mock",
+  "pytest-xdist",
   "filelock",
   "duckdb",
   "dask",
   "distributed",
   "pins[gcs]",
-  "docker"
+  "docker",
+  "toolz",
 ]
 
 dev = [
   "bumpver",
   "pandas-stubs==2.3.*"
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+xfail_strict = true
+markers = [
+  "backend: tests specific to a backend",
+  "notimpl: ibis could implement this but has not yet",
+  "notyet: requires upstream changes",
+  "never: backend will never support this",
+  "xfail_version: version-specific expected failure",
+  "gizmosql: GizmoSQL backend test",
+  "tpch: TPC-H tests",
+  "tpcds: TPC-DS tests",
 ]
 
 [project.urls]

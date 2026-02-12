@@ -52,11 +52,11 @@ export PYTHONPATH=$(pwd)/ibis_gizmosql
 ### Usage
 In this example - we'll start a GizmoSQL server with the DuckDB back-end in Docker, and connect to it from Python using Ibis.
 
-First - start the GizmoSQL server - which by default mounts a small TPC-H database:
+First - start the GizmoSQL server - which by default mounts an empty in-memory database.  We use the `INIT_SQL_COMMANDS` env var in the `docker` command to create a very small TPC-H database upon startup:
 
 ```bash
 docker run --name gizmosql \
-           --detach \
+           --interactive \
            --rm \
            --tty \
            --init \
@@ -64,7 +64,9 @@ docker run --name gizmosql \
            --env TLS_ENABLED="1" \
            --env GIZMOSQL_PASSWORD="gizmosql_password" \
            --env PRINT_QUERIES="1" \
-           --pull missing \
+           --env DATABASE_FILENAME=":memory:" \
+           --env INIT_SQL_COMMANDS="CALL dbgen(sf=0.01);" \
+           --pull always \
            gizmodata/gizmosql:latest
 ```
 
