@@ -1,22 +1,27 @@
 name: ibis-gizmosql-ci
 
 on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
   release:
     types:
       - published
 
 jobs:
-  build-n-publish:
-    name: Build and publish Python 🐍 distributions 📦 to PyPI
+  test:
+    name: Run tests
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing to PyPi
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v4
+
+      - name: Clone ibis testing data
+        run: git clone https://github.com/ibis-project/testing-data.git ci/ibis-testing-data
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
@@ -25,27 +30,59 @@ jobs:
           python -m pip install --upgrade pip
           pip install .[test]
 
-      # Run your tests
-      - name: Run tests
+      - name: Start GizmoSQL Docker container
         run: |
-          pytest
+          docker pull gizmodata/gizmosql:latest
+          docker run -d --name ibis-gizmosql-test \
+            -p 31337:31337 \
+            --init \
+            -e GIZMOSQL_USERNAME=ibis \
+            -e GIZMOSQL_PASSWORD=ibis_password \
+            -e TLS_ENABLED=1 \
+            -e PRINT_QUERIES=0 \
+            -e DATABASE_FILENAME=":memory:" \
+            gizmodata/gizmosql:latest
 
-      - name: Install pypa/build
-        run: >-
-          python -m
-          pip install
-          build
-          --user
+      - name: Wait for GizmoSQL to be ready
+        run: |
+          for i in $(seq 1 60); do
+            if docker logs ibis-gizmosql-test 2>&1 | grep -q "GizmoSQL server - started"; then
+              echo "GizmoSQL server is ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Timed out waiting for GizmoSQL server"
+          docker logs ibis-gizmosql-test
+          exit 1
+
+      - name: Run tests
+        run: pytest -x -n auto --dist loadgroup
+
+      - name: Stop GizmoSQL container
+        if: always()
+        run: docker stop ibis-gizmosql-test || true
+
+  publish:
+    name: Build and publish to PyPI
+    runs-on: ubuntu-latest
+    needs: test
+    if: startsWith(github.ref, 'refs/tags')
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build
+        run: python -m pip install build
 
       - name: Build a binary wheel and a source tarball
-        run: >-
-          python -m
-          build
-          --sdist
-          --wheel
-          --outdir dist/
-          .
+        run: python -m build --sdist --wheel --outdir dist/
 
-      - name: Publish distribution 📦 to PyPI
-        if: startsWith(github.ref, 'refs/tags')
+      - name: Publish distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
