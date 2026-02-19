@@ -62,6 +62,7 @@ docker run --name gizmosql \
            --init \
            --publish 31337:31337 \
            --env TLS_ENABLED="1" \
+           --env GIZMOSQL_USERNAME="gizmosql_user" \
            --env GIZMOSQL_PASSWORD="gizmosql_password" \
            --env PRINT_QUERIES="1" \
            --env DATABASE_FILENAME=":memory:" \
@@ -81,7 +82,7 @@ from ibis import _
 
 # Kwarg connection example
 con = ibis.gizmosql.connect(host="localhost",
-                            user=os.getenv("GIZMOSQL_USERNAME", "gizmosql_username"),
+                            user=os.getenv("GIZMOSQL_USERNAME", "gizmosql_user"),
                             password=os.getenv("GIZMOSQL_PASSWORD", "gizmosql_password"),
                             port=31337,
                             use_encryption=True,
@@ -89,7 +90,7 @@ con = ibis.gizmosql.connect(host="localhost",
                             )
 
 # URL connection example
-# con = ibis.connect("gizmosql://gizmosql_username:gizmosql_password@localhost:31337?disableCertificateVerification=True&useEncryption=True")
+# con = ibis.connect("gizmosql://gizmosql_user:gizmosql_password@localhost:31337?disableCertificateVerification=True&useEncryption=True")
 
 print(con.tables)
 
