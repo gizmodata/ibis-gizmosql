@@ -5,6 +5,25 @@ All notable changes to ibis-gizmosql will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+#### Driver Upgrade
+- Upgraded `adbc-driver-gizmosql` from `0.1.*` to `1.0.*`
+- Removed direct `pyarrow` dependency — now bundled transitively via the driver
+
+#### DDL/DML Execution
+- Migrated all DDL/DML statements from `cursor.execute(...).fetchall()` to `gizmosql.execute_update(cursor, ...)` — the declarative API that fires statements immediately on the server without requiring a fetch round-trip
+- Added `_execute_ddl()` helper method for one-line DDL/DML execution
+- Affected methods: `_Settings.__setitem__`, `create_table`, `create_database`, `drop_database`, `_load_extensions`, `attach`, `detach`, `attach_sqlite`, `to_xlsx`, `_create_temp_view`, `_register_in_memory_table`
+
+### Added
+
+#### External Authentication (OAuth/SSO)
+- `do_connect()` now accepts `auth_type="external"` for OAuth/SSO authentication flows, along with `oauth_port`, `oauth_timeout`, and `open_browser` parameters
+- URL-based connection supports `authType`, `oauthPort`, `oauthTimeout`, and `openBrowser` query parameters
+
 ## [0.1.1] - 2026-02-12
 
 ### Added

@@ -71,9 +71,7 @@ class TestConf(BackendTest):
 
     def load_tpch(self) -> None:
         """Load TPC-H data using DuckDB's built-in dbgen."""
-        con = self.connection
-        with con._safe_raw_sql("CALL dbgen(sf=0.17)") as cur:
-            cur.fetchall()
+        self.connection._execute_ddl("CALL dbgen(sf=0.17)")
 
     def _load_data(self, **_: Any) -> None:
         """Load test data into the GizmoSQL server."""
@@ -212,9 +210,7 @@ class TestConf(BackendTest):
             cur.adbc_ingest("topk", topk_table, mode="replace")
 
         # ── shops.ice_cream ───────────────────────────────────────────
-        with self.connection.con.cursor() as cur:
-            cur.execute("CREATE SCHEMA IF NOT EXISTS shops")
-            cur.fetchall()
+        self.connection._execute_ddl("CREATE SCHEMA IF NOT EXISTS shops")
         ice_cream_table = pa.table({
             "flavor": pa.array(["vanilla", "chocolate"], type=pa.string()),
             "quantity": pa.array([2, 3], type=pa.int32()),
