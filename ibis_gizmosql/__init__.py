@@ -68,7 +68,7 @@ class _Settings:
 
     def __setitem__(self, key, value):
         with self.con.cursor() as cur:
-            gizmosql.execute_update(cur, f"SET {key} = {str(value)!r}")
+            cur.execute_update(f"SET {key} = {str(value)!r}")
 
     def __repr__(self):
         with self.con.cursor() as cur:
@@ -291,11 +291,10 @@ class Backend(
                 insert_stmt = sge.insert(
                     query, into=initial_table, columns=table.columns
                 ).sql(dialect)
-                gizmosql.execute_update(cur, insert_stmt)
+                cur.execute_update(insert_stmt)
 
             if overwrite:
-                gizmosql.execute_update(
-                    cur,
+                cur.execute_update(
                     sge.Drop(kind="TABLE", this=final_table, exists=True).sql(dialect=self.dialect),
                 )
                 # TODO: This branching should be removed once DuckDB >=0.9.3 is
@@ -304,8 +303,7 @@ class Backend(
                 # We should (pending that release) be able to remove the if temp
                 # branch entirely.
                 if temp:
-                    gizmosql.execute_update(
-                        cur,
+                    cur.execute_update(
                         sge.Create(
                             kind="TABLE",
                             this=final_table,
@@ -313,13 +311,11 @@ class Backend(
                             properties=sge.Properties(expressions=properties),
                         ).sql(dialect=self.dialect),
                     )
-                    gizmosql.execute_update(
-                        cur,
+                    cur.execute_update(
                         sge.Drop(kind="TABLE", this=initial_table, exists=True).sql(dialect=self.dialect),
                     )
                 else:
-                    gizmosql.execute_update(
-                        cur,
+                    cur.execute_update(
                         sge.Alter(
                             this=initial_table,
                             kind="TABLE",
@@ -418,7 +414,7 @@ class Backend(
         with contextlib.suppress(AttributeError):
             query = query.sql(dialect=self.dialect)
         with self.con.cursor() as cur:
-            return gizmosql.execute_update(cur, query)
+            return cur.execute_update(query)
 
     def list_catalogs(self, like: str | None = None) -> list[str]:
         col = "catalog_name"
