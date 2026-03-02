@@ -68,7 +68,7 @@ class _Settings:
 
     def __setitem__(self, key, value):
         with self.con.cursor() as cur:
-            cur.execute_update(f"SET {key} = {str(value)!r}")
+            cur.execute(f"SET {key} = {str(value)!r}")
 
     def __repr__(self):
         with self.con.cursor() as cur:
@@ -291,10 +291,10 @@ class Backend(
                 insert_stmt = sge.insert(
                     query, into=initial_table, columns=table.columns
                 ).sql(dialect)
-                cur.execute_update(insert_stmt)
+                cur.execute(insert_stmt)
 
             if overwrite:
-                cur.execute_update(
+                cur.execute(
                     sge.Drop(kind="TABLE", this=final_table, exists=True).sql(dialect=self.dialect),
                 )
                 # TODO: This branching should be removed once DuckDB >=0.9.3 is
@@ -303,7 +303,7 @@ class Backend(
                 # We should (pending that release) be able to remove the if temp
                 # branch entirely.
                 if temp:
-                    cur.execute_update(
+                    cur.execute(
                         sge.Create(
                             kind="TABLE",
                             this=final_table,
@@ -311,11 +311,11 @@ class Backend(
                             properties=sge.Properties(expressions=properties),
                         ).sql(dialect=self.dialect),
                     )
-                    cur.execute_update(
+                    cur.execute(
                         sge.Drop(kind="TABLE", this=initial_table, exists=True).sql(dialect=self.dialect),
                     )
                 else:
-                    cur.execute_update(
+                    cur.execute(
                         sge.Alter(
                             this=initial_table,
                             kind="TABLE",
@@ -398,23 +398,14 @@ class Backend(
         try:
             yield cur
         finally:
-            # GizmoSQL uses lazy execution over Flight SQL: DML results must
-            # be consumed (fetched) for the statement to take effect.  If the
-            # caller already consumed them (e.g. via fetch_arrow_table()) the
-            # second fetch is harmless – we just suppress any errors.
-            with contextlib.suppress(Exception):
-                cur.fetchall()
             cur.close()
 
-    def _execute_ddl(self, query: str | sg.Expression) -> int:
-        """Execute a DDL/DML statement immediately via execute_update.
-
-        Returns the number of rows affected (-1 for DDL).
-        """
+    def _execute_ddl(self, query: str | sg.Expression) -> None:
+        """Execute a DDL/DML statement immediately."""
         with contextlib.suppress(AttributeError):
             query = query.sql(dialect=self.dialect)
         with self.con.cursor() as cur:
-            return cur.execute_update(query)
+            cur.execute(query)
 
     def list_catalogs(self, like: str | None = None) -> list[str]:
         col = "catalog_name"
