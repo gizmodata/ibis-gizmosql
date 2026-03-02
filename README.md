@@ -92,6 +92,14 @@ con = ibis.gizmosql.connect(host="localhost",
 # URL connection example
 # con = ibis.connect("gizmosql://gizmosql_user:gizmosql_password@localhost:31337?disableCertificateVerification=True&useEncryption=True")
 
+# OAuth/SSO connection example (no username/password needed)
+# con = ibis.gizmosql.connect(host="gizmosql.example.com",
+#                             port=31337,
+#                             auth_type="external",
+#                             use_encryption=True,
+#                             disable_certificate_verification=True
+#                             )
+
 print(con.tables)
 
 # assign the LINEITEM table to variable t (an Ibis table object)
@@ -132,6 +140,33 @@ You should see output:
 2            N            O  765251.00  1072862302.10  1019517788.99  1060424708.62   25.47  35703.76     0.05        30049
 3            R            F  381449.00   534594445.35   507996454.41   528524219.36   25.60  35874.01     0.05        14902
 ```
+
+### OAuth/SSO Authentication
+For browser-based OAuth/SSO, use `auth_type="external"` — no username or password needed:
+```python
+import ibis
+
+con = ibis.gizmosql.connect(
+    host="gizmosql.example.com",
+    port=31337,
+    auth_type="external",
+    use_encryption=True,
+    disable_certificate_verification=True,
+)
+```
+
+Or via URL:
+```python
+con = ibis.connect("gizmosql://gizmosql.example.com:31337?authType=external&useEncryption=True&disableCertificateVerification=True")
+```
+
+Additional OAuth parameters:
+| Parameter | URL Param | Default | Description |
+|---|---|---|---|
+| `auth_type` | `authType` | `"password"` | Auth type — use `"external"` for OAuth/SSO |
+| `oauth_port` | `oauthPort` | (driver default) | Local port for OAuth callback |
+| `oauth_timeout` | `oauthTimeout` | (driver default) | Timeout in seconds for OAuth flow |
+| `open_browser` | `openBrowser` | (driver default) | Whether to auto-open the browser |
 
 ### Handy development commands
 
