@@ -695,6 +695,8 @@ def pytest_collection_modifyitems(config, items):
         "test_cast_non_null": "FlightSQL schema doesn't preserve NOT NULL",
         # PyArrow Dataset: materialization guard
         "test_create_table_in_memory[pyarrow dataset]": "PyArrow Dataset materialization not supported",
+        # DuckDB returns '' for empty array join, ibis expects None
+        "test_empty_array_string_join": "DuckDB returns empty string instead of NULL for empty array join",
     }
     for item in items:
         reason = _xfails.get(item.name)
