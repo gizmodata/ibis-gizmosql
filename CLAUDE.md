@@ -11,7 +11,7 @@ An [Ibis](https://ibis-project.org/) backend for [GizmoSQL](https://github.com/g
 
 ## Key Concepts
 
-- **Flight SQL**: All SQL is executed over Arrow Flight SQL. The ADBC driver (`adbc-driver-gizmosql>=1.1.1`) automatically detects DDL/DML and executes immediately — just use `cursor.execute()` for everything.
+- **Flight SQL**: All SQL is executed over Arrow Flight SQL. The ADBC driver (`adbc-driver-gizmosql>=1.1.5`) automatically detects DDL/DML and executes immediately — just use `cursor.execute()` for everything.
 - **ADBC Bulk Ingest**: Used to upload in-memory PyArrow tables to the server (`cur.adbc_ingest()`). This is how `_register_in_memory_table` works.
 - **`python_enable_replacements`**: A DuckDB Python-specific setting not available on GizmoSQL; wrapped in try/except.
 - **Timezone handling**: The ibis DuckDB backend sets `SET timezone='UTC'` on connect. This is critical for correct TIMESTAMPTZ behavior.
