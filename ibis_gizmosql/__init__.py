@@ -35,7 +35,7 @@ from packaging.version import parse as vparse
 
 from ibis_gizmosql.converter import DuckDBPandasData
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 
 # Default batch size for ADBC bulk ingest operations
 _INGEST_BATCH_SIZE = 10_000
