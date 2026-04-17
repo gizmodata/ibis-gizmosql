@@ -6,7 +6,7 @@ An [Ibis](https://ibis-project.org) back-end for [GizmoSQL](https://gizmodata.co
 [![ibis-gizmosql-ci](https://github.com/gizmodata/ibis-gizmosql/actions/workflows/ci.yml/badge.svg)](https://github.com/gizmodata/ibis-gizmosql/actions/workflows/ci.yml)
 [![Supported Python Versions](https://img.shields.io/pypi/pyversions/ibis-gizmosql)](https://pypi.org/project/ibis-gizmosql/)
 [![PyPI version](https://badge.fury.io/py/ibis-gizmosql.svg)](https://badge.fury.io/py/ibis-gizmosql)
-[![PyPI Downloads](https://img.shields.io/pypi/dm/ibis-gizmosql.svg)](https://pypi.org/project/ibis-gizmosql/)
+[![PyPI Downloads](https://img.shields.io/pepy/dt/ibis-gizmosql.svg)](https://pypi.org/project/ibis-gizmosql/)
 
 # Setup (to run locally)
 
