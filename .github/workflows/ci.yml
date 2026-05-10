@@ -12,23 +12,6 @@ jobs:
   test:
     name: Run tests
     runs-on: ubuntu-latest
-    services:
-      gizmosql:
-        image: gizmodata/gizmosql:latest
-        ports:
-          - 31337:31337
-        env:
-          GIZMOSQL_USERNAME: ibis
-          GIZMOSQL_PASSWORD: ibis_password
-          TLS_ENABLED: "1"
-          PRINT_QUERIES: "0"
-          DATABASE_FILENAME: ":memory:"
-        options: >-
-          --init
-          --health-cmd "bash -c '</dev/tcp/localhost/31337' 2>/dev/null"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
 
     steps:
       - uses: actions/checkout@v4

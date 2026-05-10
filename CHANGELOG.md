@@ -7,8 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-05-10
+
 ### Changed
-- Bumped `adbc-driver-gizmosql` minimum version from `>=1.1.1` to `>=1.1.5`
+- Bumped `adbc-driver-gizmosql` minimum version from `>=1.1.1` to `>=1.1.6`.
+- Replaced the Docker-managed GizmoSQL test server with the
+  [`gizmosql`](https://pypi.org/project/gizmosql/) PyPI package. The test
+  fixture now starts the server as a managed subprocess, auto-picks a free
+  port, and shares one server across pytest-xdist workers via a refcount-
+  protected lock so `BackendTest.load_data`'s FileLock pattern keeps
+  working. Local development no longer requires Docker.
+- Removed the `services: gizmosql` block from CI now that the test fixture
+  starts its own server.
+- Replaced the `docker` test dependency with `gizmosql`.
 
 ## [1.0.1] - 2026-03-02
 

@@ -34,7 +34,11 @@ pytest --runxfail -k "test_name"
 pytest --snapshot-update -k "test_name"
 ```
 
-The test fixture connects to a GizmoSQL server at `grpc+tls://localhost:31337` (configurable via `GIZMOSQL_URI` env var). The server can be started via Docker or a local compiled binary.
+The test fixture starts a GizmoSQL server as a subprocess via the
+[`gizmosql`](https://pypi.org/project/gizmosql/) PyPI package — Docker
+is not required. With pytest-xdist the first worker starts the server
+and the others connect to it via a refcount-protected lock file so
+`BackendTest.load_data`'s FileLock continues to work.
 
 ## Development
 

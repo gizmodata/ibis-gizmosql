@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import contextlib
+import json
+import socket
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import docker
+import gizmosql
 import pytest
 from filelock import FileLock
 
@@ -17,11 +19,8 @@ if TYPE_CHECKING:
     from ibis.backends import BaseBackend
 
 # ── Constants ──────────────────────────────────────────────────────────────────
-GIZMOSQL_PORT = 31337
-GIZMOSQL_IMAGE = "gizmodata/gizmosql:latest"
 GIZMOSQL_USERNAME = "ibis"
 GIZMOSQL_PASSWORD = "ibis_password"
-CONTAINER_NAME = "ibis-gizmosql-test"
 
 # Paths
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -60,13 +59,14 @@ class TestConf(BackendTest):
 
     @staticmethod
     def connect(*, tmpdir, worker_id, **kw) -> BaseBackend:
+        # Connection details are populated by the gizmosql_server fixture
+        # before this is called.
         return ibis.gizmosql.connect(
-            host="localhost",
-            user=GIZMOSQL_USERNAME,
-            password=GIZMOSQL_PASSWORD,
-            port=GIZMOSQL_PORT,
-            use_encryption=True,
-            disable_certificate_verification=True,
+            host=_SERVER["host"],
+            user=_SERVER["username"],
+            password=_SERVER["password"],
+            port=_SERVER["port"],
+            use_encryption=False,
         )
 
     def load_tpch(self) -> None:
@@ -219,80 +219,102 @@ class TestConf(BackendTest):
             cur.adbc_ingest("shops.ice_cream", ice_cream_table, mode="replace")
 
 
-# ── Docker container management ────────────────────────────────────────────────
-def wait_for_container_log(
-    container, timeout=60, poll_interval=1,
-    ready_message="GizmoSQL server - started",
-):
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-        logs = container.logs().decode("utf-8")
-        if ready_message in logs:
-            return True
-        time.sleep(poll_interval)
-    raise TimeoutError(
-        f"Container did not show '{ready_message}' within {timeout}s."
-    )
+# ── Server management ─────────────────────────────────────────────────────────
+# TestConf.connect is a @staticmethod with a fixed signature, so it can't take
+# the gizmosql_server fixture as an argument. The fixture populates this dict
+# before any backend connections are opened.
+_SERVER: dict[str, Any] = {}
 
 
-def _port_is_listening(port: int, host: str = "localhost") -> bool:
-    """Check whether something is already listening on the given port."""
-    import socket
-
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.settimeout(1)
-        return s.connect_ex((host, port)) == 0
+def _wait_for_port(host: str, port: int, timeout: float = 30.0) -> None:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(1.0)
+            if s.connect_ex((host, port)) == 0:
+                return
+        time.sleep(0.2)
+    raise TimeoutError(f"GizmoSQL server at {host}:{port} not reachable in {timeout}s")
 
 
 @pytest.fixture(scope="session")
-def gizmosql_server():
-    """Start the GizmoSQL Docker container with test data mounted.
+def gizmosql_server(tmp_path_factory, worker_id):
+    """Start the GizmoSQL server as a managed subprocess via the gizmosql
+    PyPI package.
 
-    If a server (local build or another container) is already listening on
-    GIZMOSQL_PORT, skip Docker management and use that server instead.
+    With pytest-xdist, every worker has its own session, so a naive fixture
+    would start one server per worker — which then breaks ibis's
+    ``BackendTest.load_data`` FileLock pattern (it loads data once and the
+    other workers see the marker but talk to empty servers). Instead, the
+    first worker to enter the lock starts the server and writes its
+    connection details to a file in the shared base tmp dir; subsequent
+    workers read that file and connect to the same server. Only the worker
+    that started the server tears it down.
     """
-    # If something is already listening (e.g. a local build), just use it.
-    if _port_is_listening(GIZMOSQL_PORT):
-        yield None
+    if worker_id == "master":
+        # Not running under xdist — single-process happy path.
+        with gizmosql.Server(
+            username=GIZMOSQL_USERNAME,
+            password=GIZMOSQL_PASSWORD,
+        ) as srv:
+            _SERVER.update(
+                host=srv.host, port=srv.port,
+                username=srv.username, password=srv.password,
+            )
+            yield srv
+            _SERVER.clear()
         return
 
-    client = docker.from_env()
-    parquet_dir = str(DATA_DIR / "parquet")
+    root_tmp = tmp_path_factory.getbasetemp().parent
+    info_path = root_tmp / "gizmosql_server.json"
+    lock_path = root_tmp / "gizmosql_server.lock"
+    refcount_path = root_tmp / "gizmosql_server.refcount"
 
-    # Reuse an existing container if it's already running
+    def _read_refcount() -> int:
+        try:
+            return int(refcount_path.read_text())
+        except FileNotFoundError:
+            return 0
+
+    with FileLock(str(lock_path)):
+        is_owner = not info_path.is_file()
+        if is_owner:
+            srv = gizmosql.Server(
+                username=GIZMOSQL_USERNAME,
+                password=GIZMOSQL_PASSWORD,
+            ).start()
+            info_path.write_text(json.dumps({
+                "host": srv.host,
+                "port": srv.port,
+                "username": srv.username,
+                "password": srv.password,
+            }))
+        else:
+            srv = None
+        refcount_path.write_text(str(_read_refcount() + 1))
+
+    info = json.loads(info_path.read_text())
+    _wait_for_port(info["host"], info["port"])
+    _SERVER.update(info)
     try:
-        container = client.containers.get(CONTAINER_NAME)
-        if container.status == "running":
-            yield container
-            return
-        # Container exists but is not running – remove and recreate
-        container.remove(force=True)
-    except docker.errors.NotFound:
-        pass
-
-    container = client.containers.run(
-        image=GIZMOSQL_IMAGE,
-        name=CONTAINER_NAME,
-        detach=True,
-        remove=True,
-        tty=True,
-        init=True,
-        ports={f"{GIZMOSQL_PORT}/tcp": GIZMOSQL_PORT},
-        volumes={parquet_dir: {"bind": "/data/parquet", "mode": "ro"}},
-        environment={
-            "GIZMOSQL_USERNAME": GIZMOSQL_USERNAME,
-            "GIZMOSQL_PASSWORD": GIZMOSQL_PASSWORD,
-            "TLS_ENABLED": "1",
-            "PRINT_QUERIES": "0",
-            "DATABASE_FILENAME": ":memory:",
-        },
-        stdout=True,
-        stderr=True,
-    )
-
-    wait_for_container_log(container)
-    yield container
-    container.stop()
+        yield srv
+    finally:
+        _SERVER.clear()
+        # The owner waits until every worker has decremented the refcount,
+        # then tears the server down. Non-owners just decrement and leave.
+        with FileLock(str(lock_path)):
+            refcount_path.write_text(str(_read_refcount() - 1))
+        if is_owner and srv is not None:
+            deadline = time.time() + 60.0
+            while time.time() < deadline:
+                with FileLock(str(lock_path)):
+                    if _read_refcount() <= 0:
+                        break
+                time.sleep(0.2)
+            srv.stop()
+            with contextlib.suppress(FileNotFoundError):
+                info_path.unlink()
+                refcount_path.unlink()
 
 
 # ── Core fixtures ──────────────────────────────────────────────────────────────

@@ -7,7 +7,7 @@ packages = ["ibis_gizmosql"]
 
 [project]
 name = "ibis-gizmosql"
-version = "1.0.2"
+version = "1.0.3"
 description = "An Ibis backend for GizmoSQL"
 readme = "README.md"
 authors = [{ name = "Philip Moore", email = "philip@gizmodata.com" }]
@@ -21,7 +21,7 @@ keywords = ["ibis", "gizmosql", "ibis-framework", "flightsql", "duckdb", "adbc",
 dependencies = [
   "ibis-framework==12.0.*",
   "duckdb==1.4.*",
-  "adbc-driver-gizmosql>=1.1.5",
+  "adbc-driver-gizmosql>=1.1.6",
   "pyarrow-hotfix==0.7",
   "numpy==2.4.*",
   "packaging==26.0",
@@ -44,7 +44,7 @@ test = [
   "dask",
   "distributed",
   "pins[gcs]",
-  "docker",
+  "gizmosql",
   "toolz",
 ]
 
@@ -71,7 +71,7 @@ markers = [
 Homepage = "https://github.com/gizmodata/ibis-gizmosql"
 
 [tool.bumpver]
-current_version = "1.0.2"
+current_version = "1.0.3"
 version_pattern = "MAJOR.MINOR.PATCH[PYTAGNUM]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
