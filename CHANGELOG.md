@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-05-10
+
+### Changed
+
+- Aligned the GitHub Release notes flow with the convention used in the
+  upstream [GizmoSQL](https://github.com/gizmodata/gizmosql) repo. The
+  CI release job now extracts the matching `## [X.Y.Z]` section from
+  `CHANGELOG.md` via `awk` and feeds it to
+  `softprops/action-gh-release@v2` via `body_path` (replacing the
+  previous `gh release create --notes-file` step). The awk pattern
+  matches against the tag with the leading `v` stripped, so tag
+  `v1.0.4` correctly maps to `## [1.0.4]` in the changelog. If no
+  matching section exists, the release is still created and a CI
+  warning is logged.
+
 ## [1.0.3] - 2026-05-10
 
 ### Changed
