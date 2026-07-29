@@ -20,13 +20,13 @@ classifiers = [
 keywords = ["ibis", "gizmosql", "ibis-framework", "flightsql", "duckdb", "adbc", "gizmodata"]
 dependencies = [
   "ibis-framework==12.0.*",
-  "duckdb==1.4.*",
-  "adbc-driver-gizmosql>=1.1.6",
+  "duckdb==1.5.*",
+  "adbc-driver-gizmosql>=2.0.0",
   "pyarrow-hotfix==0.7",
-  "numpy==2.4.*",
-  "packaging==26.0",
+  "numpy==2.5.*",
+  "packaging==26.2",
   "pandas==3.0.*",
-  "rich==14.3.*"
+  "rich==15.0.*"
 ]
 requires-python = ">=3.10"
 
@@ -50,7 +50,7 @@ test = [
 
 dev = [
   "bumpver",
-  "pandas-stubs==2.3.*"
+  "pandas-stubs==3.0.*"
 ]
 
 [tool.pytest.ini_options]

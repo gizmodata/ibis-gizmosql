@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Bumped `adbc-driver-gizmosql` minimum version from `>=1.1.6` to `>=2.0.0`,
+  the Go-backed rewrite of the driver. The 2.0 driver is API byte-compatible
+  with 1.x, so behavior is unchanged.
+- Bumped pinned dependencies to current stable versions: `duckdb`
+  `1.4.*` → `1.5.*`, `numpy` `2.4.*` → `2.5.*`, `packaging` `26.0` →
+  `26.2`, `rich` `14.3.*` → `15.0.*`, and (dev) `pandas-stubs`
+  `2.3.*` → `3.0.*`. `ibis-framework` (`12.0.*`), `pandas` (`3.0.*`),
+  and `pyarrow-hotfix` (`0.7`) are already at their latest releases.
+- Bumped GitHub Actions in CI to current majors: `actions/checkout`
+  v4 → v7, `actions/setup-python` v5 → v7, and
+  `softprops/action-gh-release` v2 → v3
+  (`pypa/gh-action-pypi-publish` stays on the rolling `release/v1`).
+
 ## [1.0.4] - 2026-05-10
 
 ### Changed
