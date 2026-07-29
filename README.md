@@ -8,6 +8,9 @@ An [Ibis](https://ibis-project.org) back-end for [GizmoSQL](https://gizmodata.co
 [![PyPI version](https://badge.fury.io/py/ibis-gizmosql.svg)](https://badge.fury.io/py/ibis-gizmosql)
 [![PyPI Downloads](https://img.shields.io/pepy/dt/ibis-gizmosql.svg)](https://pypi.org/project/ibis-gizmosql/)
 
+> [!NOTE]
+> As of v1.1.0 - `ibis-gizmosql` runs on `adbc-driver-gizmosql` 2.0 - powered by the new native Go [GizmoSQL ADBC driver](https://github.com/gizmodata/gizmosql-adbc).  The Python API is unchanged - and the shared Go driver library (used across all languages) provides DDL/DML immediate execution, `RETURNING` support, `gizmosql://` URIs, and OAuth/SSO.
+
 # Setup (to run locally)
 
 ## Install Python package

@@ -7,11 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-29
+
 ### Changed
 
 - Bumped `adbc-driver-gizmosql` minimum version from `>=1.1.6` to `>=2.0.0`,
-  the Go-backed rewrite of the driver. The 2.0 driver is API byte-compatible
-  with 1.x, so behavior is unchanged.
+  the Go-backed rewrite of the driver, powered by the new native Go
+  [GizmoSQL ADBC driver](https://github.com/gizmodata/gizmosql-adbc).
+  The 2.0 driver is API byte-compatible with 1.x, so behavior is
+  unchanged — and the shared Go driver library (used across all
+  languages) provides DDL/DML immediate execution, `RETURNING` support,
+  `gizmosql://` URIs, and OAuth/SSO. The README now notes this.
 - Bumped pinned dependencies to current stable versions: `duckdb`
   `1.4.*` → `1.5.*`, `numpy` `2.4.*` → `2.5.*`, `packaging` `26.0` →
   `26.2`, `rich` `14.3.*` → `15.0.*`, and (dev) `pandas-stubs`
